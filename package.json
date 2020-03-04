@@ -1,0 +1,21 @@
+{
+  "name": "stbjs",
+  "version": "1.0.0",
+  "description": "",
+  "main": "src/index.js",
+  "gypfile": true,
+  "scripts": {
+    "build-cpp": "node-gyp rebuild",
+    "build-tsc": "tsc",
+    "clean": "node-gyp clean"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "node-gyp": "^6.1.0",
+    "typescript": "^3.8.3"
+  },
+  "dependencies": {
+    "node-addon-api": "^2.0.0"
+  }
+}
