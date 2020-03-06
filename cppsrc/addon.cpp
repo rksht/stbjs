@@ -17,14 +17,14 @@ struct StbImageLoadResult {
     void *data;
     int width;
     int height;
+    int channels_in_file;
     int channels;
-    int desired_channels;
     const char *error_message = nullptr;
 };
 
-StbImageLoadResult load_image(const std::string &filename, int desired_channels) {
+static StbImageLoadResult load_image(const std::string &filename, int desired_channels) {
     StbImageLoadResult result{};
-    result.desired_channels = desired_channels;
+    result.channels = desired_channels;
 
     auto path = fs::path(filename);
     if (!fs::exists(path)) {
@@ -32,7 +32,9 @@ StbImageLoadResult load_image(const std::string &filename, int desired_channels)
         return result;
     }
 
-    void *data = stbi_load(filename.c_str(), &result.width, &result.height, &result.channels, desired_channels);
+    void *data =
+        stbi_load(filename.c_str(), &result.width, &result.height, &result.channels_in_file, result.channels);
+
     if (data == nullptr) {
         result.error_message = "Failed to load image";
         return result;
@@ -48,6 +50,7 @@ Napi::Object load_png(const Napi::CallbackInfo &info) {
     auto env = info.Env();
 
     if (info.Length() < 1 || !info[0].IsString()) {
+        printf("HERE");
         Napi::TypeError::New(
             env, fmt::format("{} - Expected Argument types (filename :: String)", __PRETTY_FUNCTION__))
             .ThrowAsJavaScriptException();
@@ -61,11 +64,12 @@ Napi::Object load_png(const Napi::CallbackInfo &info) {
     auto result = load_image(filename, desired_channels);
 
     if (result.error_message) {
-        Napi::Error::New(env, fmt::format("loadPng({}) - {}", filename, result.error_message))
+        Napi::Error::New(env, fmt::format("Error - loadPng({}) - {}", filename, result.error_message))
             .ThrowAsJavaScriptException();
     }
 
     size_t byte_length = size_t(result.channels * result.width * result.height);
+    printf("load_png - byte_length = %zu", byte_length);
     auto array_buffer = Napi::ArrayBuffer::New(env, byte_length);
 
     memcpy(array_buffer.Data(), result.data, byte_length);
@@ -75,9 +79,22 @@ Napi::Object load_png(const Napi::CallbackInfo &info) {
     imageObject.Set("width", result.width);
     imageObject.Set("height", result.height);
     imageObject.Set("numChannels", result.channels);
-    imageObject.Set("desiredChannels", result.desired_channels);
+    imageObject.Set("channelsInFile", result.channels_in_file);
     imageObject.Set("data", array_buffer);
     return imageObject;
+}
+
+template <typename T>
+static T must_as(Napi::Value value, Napi::Env env, const char *argument_name, const char *cpp_func_name) {
+    if (value.IsNull()) {
+        Napi::Error::New(env,
+                         fmt::format("Expected non-null value for argument {} from C++ function `{}`",
+                                     argument_name,
+                                     cpp_func_name))
+            .ThrowAsJavaScriptException();
+    }
+
+    return value.As<T>();
 }
 
 // writePng(imageObject :: <see above>, fileName) -> boolean.
@@ -89,14 +106,26 @@ Napi::Boolean write_png(const Napi::CallbackInfo &info) {
             .ThrowAsJavaScriptException();
     }
 
-    auto imageObject = info[0].As<Napi::Object>();
-    auto width = imageObject.Get("width").As<Napi::Number>().Int32Value();
-    auto height = imageObject.Get("height").As<Napi::Number>().Int32Value();
-    auto num_channels = imageObject.Get("numChannels").As<Napi::Number>().Int32Value();
-    auto file_name = std::string(info[1].As<Napi::String>());
+    auto imageObject = must_as<Napi::Object>(info[0], env, "imageObject", __PRETTY_FUNCTION__);
+
+    auto width =
+        must_as<Napi::Number>(imageObject.Get("width"), env, "imageObject.width", __PRETTY_FUNCTION__)
+            .Int32Value();
+
+    auto height =
+        must_as<Napi::Number>(imageObject.Get("height"), env, "imageObject.height", __PRETTY_FUNCTION__)
+            .Int32Value();
+
+    auto num_channels =
+        must_as<Napi::Number>(
+            imageObject.Get("numChannels"), env, "imageObject.numChannels", __PRETTY_FUNCTION__)
+            .Int32Value();
+
+    auto file_name = std::string(must_as<Napi::String>(info[1], env, "fileName", __PRETTY_FUNCTION__));
     auto stride = width * num_channels;
 
-    const void *data = imageObject.Get("data").As<Napi::ArrayBuffer>().Data();
+    const void *data =
+        must_as<Napi::ArrayBuffer>(imageObject.Get("data"), env, "data", __PRETTY_FUNCTION__).Data();
     int ok = stbi_write_png(file_name.c_str(), width, height, num_channels, data, stride);
     return ok ? Napi::Boolean::New(env, true) : Napi::Boolean::New(env, false);
 }

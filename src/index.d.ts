@@ -8,10 +8,10 @@ export interface pngData {
 }
 
 export interface loadedPng {
-	desiredChannels: number;
+	channelsInFile: number;
 }
 
-export function loadPng(fileName: string): pngData;
+export function loadPng(fileName: string): loadedPng;
 
 export function writePng(png: pngData, fileName: string): boolean;
 
