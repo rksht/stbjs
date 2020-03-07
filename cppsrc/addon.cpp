@@ -50,7 +50,6 @@ Napi::Object load_png(const Napi::CallbackInfo &info) {
     auto env = info.Env();
 
     if (info.Length() < 1 || !info[0].IsString()) {
-        printf("HERE");
         Napi::TypeError::New(
             env, fmt::format("{} - Expected Argument types (filename :: String)", __PRETTY_FUNCTION__))
             .ThrowAsJavaScriptException();
@@ -69,7 +68,6 @@ Napi::Object load_png(const Napi::CallbackInfo &info) {
     }
 
     size_t byte_length = size_t(result.channels * result.width * result.height);
-    printf("load_png - byte_length = %zu", byte_length);
     auto array_buffer = Napi::ArrayBuffer::New(env, byte_length);
 
     memcpy(array_buffer.Data(), result.data, byte_length);

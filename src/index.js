@@ -1,5 +1,4 @@
-const stbjs = require("../build/Debug/stbjs.node");
-const util = require("util");
+const stbjs = require("../build/Release/stbjs.node");
 
 function black(width, height, numChannels, opacity)
 {
@@ -16,19 +15,8 @@ function black(width, height, numChannels, opacity)
     return pngData;
 }
 
-function loadPng(fileName)
-{
-    const image = stbjs.loadPng(fileName, 3);
-    console.log(util.inspect(image));
-    console.assert(stbjs.writePng(image, `${fileName}_saved.png`));
-}
-
-function writePng(pngData, fileName) { return stbjs.writePng(pngData, fileName); }
-
-loadPng("image.png");
-
 module.exports = {
-    loadPng,
-    writePng,
+    loadPng: stbjs.loadPng,
+    writePng: stbjs.writePng,
     black
 };
