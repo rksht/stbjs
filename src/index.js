@@ -1,16 +1,18 @@
 const stbjs = require("../build/Release/stbjs.node");
 
-function black(width, height, numChannels, opacity)
-{
-    const pngData = {width, height, numChannels, data : new ArrayBuffer(numChannels * width * height)};
+function black(width, height, numChannels, opacity) {
+    const data = new Uint8Array(width * height * numChannels);
+    const pngData = { width, height, numChannels, data: data.buffer };
 
-    const data = pngData.data;
+    const alphaOffset = numChannels - 1;
 
     if (opacity !== 0) {
         for (let i = 0; i < width * height; ++i) {
-            data[i * numChannels + numChannels] = opacity;
+            data[i * numChannels + alphaOffset] = opacity;
         }
     }
+
+    console.log(data);
 
     return pngData;
 }
